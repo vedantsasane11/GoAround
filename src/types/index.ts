@@ -2,12 +2,21 @@ export type TransportMode = 'two_wheeler' | 'metro_bus' | 'cab_auto' | 'own_car'
 
 export type TripDuration = 4 | 8 | 12 | 24;
 
+export type DestinationCategory =
+  | 'nature'
+  | 'heritage'
+  | 'scenic_view'
+  | 'adventure'
+  | 'food_cafe'
+  | 'food_spots'
+  | 'shopping_entertainment';
+
 export interface Destination {
   id: string;
   sourceOsmId?: string;
   name: string;
   area?: string | null;
-  category: 'nature' | 'heritage' | 'food_cafe' | 'scenic_view' | 'adventure' | string;
+  category: DestinationCategory | string;
   subcategory?: string | null;
   tagline?: string | null;
   description?: string | null;

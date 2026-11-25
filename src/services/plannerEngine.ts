@@ -1,5 +1,5 @@
 import { PlanInput, Itinerary, ItineraryStop, Destination, BudgetCategory } from '../types';
-import { ALL_DESTINATIONS, PUNE_STARTING_HUBS, imgHeroSahyadri } from '../data/puneDestinations';
+import { PUNE_STARTING_HUBS, imgHeroSahyadri } from '../data/puneDestinations';
 
 /**
  * Calculates straight-line Haversine distance between two coordinates in kilometers.
@@ -28,10 +28,14 @@ export function estimateRoadDistanceKm(lat1: number, lon1: number, lat2: number,
 
 export function generateItinerary(
   input: PlanInput,
-  availableDestinations?: Destination[]
-): Itinerary {
+  availableDestinations: Destination[]
+): Itinerary | null {
+  if (!availableDestinations || availableDestinations.length === 0) {
+    return null;
+  }
+
   const startHub = PUNE_STARTING_HUBS.find(h => h.id === input.startingLocation) || PUNE_STARTING_HUBS[0];
-  const pool = availableDestinations && availableDestinations.length > 0 ? availableDestinations : ALL_DESTINATIONS;
+  const pool = availableDestinations;
 
   // 1. Filter spots based on budget and things to avoid
   const candidates = pool.filter(dest => {
@@ -56,16 +60,43 @@ export function generateItinerary(
     return true;
   });
 
-  // 2. Score candidates based on user interests and distance to start hub
+  // 2. Score candidates based on user interests (capped at +5) and distance to start hub
   const scored = candidates.map(dest => {
     let score = 1;
     const destCategory = dest.category.toLowerCase();
+    const destSubcategory = (dest.subcategory || '').toLowerCase();
 
-    if (input.interests.includes('nature') && (destCategory === 'nature' || dest.subcategory === 'park')) score += 5;
-    if (input.interests.includes('heritage') && (destCategory === 'heritage' || dest.subcategory === 'fort' || dest.subcategory === 'castle')) score += 5;
-    if (input.interests.includes('food_cafe') && destCategory === 'food_cafe') score += 5;
-    if (input.interests.includes('scenic_view') && (destCategory === 'scenic_view' || dest.subcategory === 'viewpoint')) score += 5;
-    if (input.interests.includes('adventure') && (destCategory === 'adventure' || dest.subcategory === 'theme_park')) score += 5;
+    const matchesInterest =
+      (input.interests.includes('nature') && (destCategory === 'nature' || destSubcategory === 'park')) ||
+      (input.interests.includes('heritage') &&
+        (destCategory === 'heritage' ||
+          ['fort', 'castle', 'monument', 'museum', 'archaeological_site', 'place_of_worship'].includes(destSubcategory))) ||
+      (input.interests.includes('scenic_view') && (destCategory === 'scenic_view' || destSubcategory === 'viewpoint')) ||
+      (input.interests.includes('adventure') &&
+        (destCategory === 'adventure' || ['theme_park', 'zoo', 'aquarium', 'trek'].includes(destSubcategory))) ||
+      (input.interests.includes('food_cafe') &&
+        (destCategory === 'food_cafe' || ['cafe', 'coffee_shop', 'bakery'].includes(destSubcategory))) ||
+      (input.interests.includes('food_spots') &&
+        (destCategory === 'food_spots' || ['restaurant', 'street_food', 'fast_food', 'food_court'].includes(destSubcategory))) ||
+      (input.interests.includes('shopping_entertainment') &&
+        (destCategory === 'shopping_entertainment' ||
+          ['mall', 'market', 'cinema', 'arcade', 'entertainment', 'shopping_centre'].includes(destSubcategory))) ||
+      // Legacy template interest mappings so curated templates remain functional
+      (input.interests.includes('sunset_lakes') &&
+        (destCategory === 'scenic_view' ||
+          destCategory === 'nature' ||
+          destSubcategory === 'viewpoint' ||
+          destSubcategory === 'lake' ||
+          dest.bestTimeOfDay === 'Sunset')) ||
+      (input.interests.includes('street_culture') &&
+        (destCategory === 'food_spots' ||
+          destCategory === 'food_cafe' ||
+          destCategory === 'shopping_entertainment' ||
+          destSubcategory === 'market'));
+
+    if (matchesInterest) {
+      score += 5;
+    }
 
     // Prefer places within reasonable travel reach from starting hub
     const distToHub = estimateRoadDistanceKm(
@@ -79,10 +110,10 @@ export function generateItinerary(
     if (input.timeAvailableHours <= 4 && distToHub > 35) score -= 6;
     if (input.timeAvailableHours <= 8 && distToHub > 65) score -= 4;
 
-    return { dest, score, distToHub };
+    return { dest, score, distToHub, matchesInterest };
   });
 
-  scored.sort((a, b) => b.score - a.score);
+  scored.sort((a, b) => b.score - a.score || a.distToHub - b.distToHub);
 
   // 3. Determine how many stops based on time available
   let targetStopCount = 3;
@@ -91,27 +122,44 @@ export function generateItinerary(
   else if (input.timeAvailableHours <= 12) targetStopCount = 4;
   else targetStopCount = 4; // overnight/weekend
 
-  // Pick top varied stops (ensure diversity in category)
+  // Prioritize interest-matching destinations first (diverse categories before repeats),
+  // then fall back to non-matching destinations only if matching ones are insufficient.
+  const matchingItems = scored.filter(item => item.matchesInterest);
+  const nonMatchingItems = scored.filter(item => !item.matchesInterest);
+
   const selectedSpots: Destination[] = [];
   const selectedCategories = new Set<string>();
+  const selectedIds = new Set<string>();
 
-  for (const item of scored) {
-    if (selectedSpots.length >= targetStopCount) break;
-    if (selectedSpots.length > 0 && selectedCategories.has(item.dest.category) && selectedSpots.length < 2) {
-      continue;
+  const addWithDiversity = (poolItems: typeof scored) => {
+    for (const item of poolItems) {
+      if (selectedSpots.length >= targetStopCount) break;
+      const normalizedCat = item.dest.category.toLowerCase();
+      if (selectedCategories.has(normalizedCat) || selectedIds.has(item.dest.id)) {
+        continue;
+      }
+      selectedSpots.push(item.dest);
+      selectedCategories.add(normalizedCat);
+      selectedIds.add(item.dest.id);
     }
-    selectedSpots.push(item.dest);
-    selectedCategories.add(item.dest.category);
+
+    if (selectedSpots.length < targetStopCount) {
+      for (const item of poolItems) {
+        if (selectedSpots.length >= targetStopCount) break;
+        if (selectedIds.has(item.dest.id)) continue;
+        selectedSpots.push(item.dest);
+        selectedIds.add(item.dest.id);
+      }
+    }
+  };
+
+  addWithDiversity(matchingItems);
+  if (selectedSpots.length < targetStopCount) {
+    addWithDiversity(nonMatchingItems);
   }
 
-  // Fallback if needed
-  if (selectedSpots.length < targetStopCount) {
-    for (const item of scored) {
-      if (!selectedSpots.some(s => s.id === item.dest.id)) {
-        selectedSpots.push(item.dest);
-      }
-      if (selectedSpots.length >= targetStopCount) break;
-    }
+  if (selectedSpots.length === 0) {
+    return null;
   }
 
   // 4. Order stops logically by time of day or proximity to create an efficient circuit
@@ -200,7 +248,7 @@ export function generateItinerary(
       transitNotesToNext: i < selectedSpots.length - 1 ? transitNote : undefined,
       estimatedCost: isCostVerified ? spot.costPerPerson! : null,
       costUnverified: !isCostVerified,
-      reasonForPick: spot.whySelectedText || `Curated ${spot.category.replace('_', ' ')} spot located in ${spot.area || 'the Pune region'}.`,
+      reasonForPick: spot.whySelectedText || `Curated ${spot.category.replace(/_/g, ' ')} spot located in ${spot.area || 'the Pune region'}.`,
       insiderTip: spot.localTip || 'UPI works almost everywhere; keep ₹200 cash handy for local parking and village stalls.',
     });
   }

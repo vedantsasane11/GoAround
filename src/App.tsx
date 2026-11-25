@@ -21,7 +21,7 @@ export default function App() {
     budgetPerPerson: 800,
     groupSize: 2,
     transportMode: 'two_wheeler',
-    interests: ['nature', 'heritage', 'scenic_view'],
+    interests: ['nature', 'heritage', 'scenic_view', 'food_cafe'],
     thingsToAvoid: ['heavy_traffic'],
   });
 
@@ -61,12 +61,14 @@ export default function App() {
           budgetPerPerson: 800,
           groupSize: 2,
           transportMode: 'two_wheeler',
-          interests: ['nature', 'heritage', 'scenic_view'],
+          interests: ['nature', 'heritage', 'scenic_view', 'food_cafe'],
           thingsToAvoid: ['heavy_traffic'],
         },
         result.data
       );
-      setCurrentItinerary(initialTrip);
+      if (initialTrip) {
+        setCurrentItinerary(initialTrip);
+      }
     }
   }, []);
 
@@ -78,8 +80,12 @@ export default function App() {
   }, [loadDestinations]);
 
   const handlePlanSubmit = (input: PlanInput) => {
-    if (destinations.length === 0 && destinationsError) {
-      alert(`Cannot plan trip with real data: ${destinationsError}`);
+    if (destinations.length === 0) {
+      alert(
+        destinationsError
+          ? `Cannot plan trip: ${destinationsError}`
+          : 'Destination catalog is currently unavailable. Please check the Supabase connection and try again.'
+      );
       return;
     }
 
@@ -88,22 +94,50 @@ export default function App() {
 
     setTimeout(() => {
       const generated = generateItinerary(input, destinations);
-      setCurrentItinerary(generated);
       setIsGenerating(false);
-      setCurrentTab('result');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (generated) {
+        setCurrentItinerary(generated);
+        setCurrentTab('result');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        alert(
+          'Could not generate an itinerary with the selected preferences and available destinations. Please try adjusting your filters.'
+        );
+      }
     }, 400);
   };
 
   const handleSelectTemplate = (template: TripTemplate) => {
+    if (destinations.length === 0) {
+      alert(
+        destinationsError
+          ? `Cannot load curated trail: ${destinationsError}`
+          : 'Destination catalog is currently unavailable. Please check the Supabase connection and try again.'
+      );
+      return;
+    }
+
     setPlannerInput(template.defaults);
     const generated = generateItinerary(template.defaults, destinations);
-    setCurrentItinerary(generated);
-    setCurrentTab('result');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (generated) {
+      setCurrentItinerary(generated);
+      setCurrentTab('result');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      alert('Could not generate an itinerary for this template with the currently available destinations.');
+    }
   };
 
   const handleSelectTemplateById = (templateId: string) => {
+    if (destinations.length === 0) {
+      alert(
+        destinationsError
+          ? `Cannot load curated trail: ${destinationsError}`
+          : 'Destination catalog is currently unavailable. Please check the Supabase connection and try again.'
+      );
+      return;
+    }
+
     const tmpl = CURATED_TEMPLATES.find((t) => t.id === templateId) || CURATED_TEMPLATES[0];
     handleSelectTemplate(tmpl);
   };

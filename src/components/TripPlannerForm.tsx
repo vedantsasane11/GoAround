@@ -24,11 +24,13 @@ interface TripPlannerFormProps {
 }
 
 const INTEREST_OPTIONS = [
-  { id: 'nature', label: 'Scenic Nature & Sahyadri Hills', desc: 'Waterfalls, forest trails, green overlooks' },
-  { id: 'heritage', label: 'Historic Forts & Maratha Heritage', desc: 'Bastions, gateways, old city architecture' },
-  { id: 'food_cafe', label: 'Café Hopping & Street Food', desc: 'Irani chai, bun maska, local bakery eats' },
-  { id: 'sunset_lakes', label: 'Peaceful Lakes & Sunset Points', desc: 'Pawna, Panshet, quiet reservoir shorelines' },
-  { id: 'adventure', label: 'Adventure & Light Trekking', desc: 'Ridge trails, rocky climbs, viewpoint hikes' },
+  { id: 'nature', label: 'Scenic Nature & Parks', desc: 'Hills, gardens, lakes, and green trails' },
+  { id: 'heritage', label: 'Historic Forts & Heritage', desc: 'Forts, temples, museums, and old city architecture' },
+  { id: 'scenic_view', label: 'Viewpoints & Sunset Spots', desc: 'Hilltop overlooks, tekdis, and panoramic views' },
+  { id: 'adventure', label: 'Adventure & Activities', desc: 'Theme parks, trekking ridges, and active outings' },
+  { id: 'food_cafe', label: 'Cafés & Hangout Spots', desc: 'Coffee houses, bakeries, and relaxed lounges' },
+  { id: 'food_spots', label: 'Local Food & Street Eats', desc: 'Misal joints, Irani chai, and iconic local eateries' },
+  { id: 'shopping_entertainment', label: 'Shopping & Entertainment', desc: 'Malls, markets, gaming zones, and evening hubs' },
 ];
 
 const AVOID_OPTIONS = [
@@ -57,7 +59,7 @@ export const TripPlannerForm: React.FC<TripPlannerFormProps> = ({
     initialValues?.transportMode || 'two_wheeler'
   );
   const [interests, setInterests] = useState<string[]>(
-    initialValues?.interests || ['nature', 'heritage', 'food_cafe']
+    initialValues?.interests || ['nature', 'heritage', 'scenic_view', 'food_cafe']
   );
   const [thingsToAvoid, setThingsToAvoid] = useState<string[]>(
     initialValues?.thingsToAvoid || ['heavy_traffic']

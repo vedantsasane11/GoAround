@@ -38,7 +38,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       budgetPerPerson: budget,
       groupSize: 2,
       transportMode: transport,
-      interests: ['nature', 'heritage', 'food_cafe'],
+      interests: ['nature', 'heritage', 'scenic_view', 'food_cafe'],
       thingsToAvoid: ['heavy_traffic'],
     });
   };

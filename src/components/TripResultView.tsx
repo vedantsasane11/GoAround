@@ -19,6 +19,9 @@ import {
   Landmark,
   Mountain,
   Trees,
+  Coffee,
+  Utensils,
+  ShoppingBag,
   ExternalLink,
 } from 'lucide-react';
 import { Destination, Itinerary, ItineraryStop } from '../types';
@@ -88,13 +91,21 @@ export const TripResultView: React.FC<TripResultViewProps> = ({
   };
 
   const renderCategoryIcon = (category: string) => {
-    switch (category) {
+    switch (category.toLowerCase()) {
       case 'heritage':
         return <Landmark className="w-8 h-8 text-amber-300" />;
       case 'scenic_view':
         return <Mountain className="w-8 h-8 text-sky-300" />;
       case 'nature':
         return <Trees className="w-8 h-8 text-emerald-300" />;
+      case 'adventure':
+        return <Compass className="w-8 h-8 text-orange-300" />;
+      case 'food_cafe':
+        return <Coffee className="w-8 h-8 text-amber-200" />;
+      case 'food_spots':
+        return <Utensils className="w-8 h-8 text-rose-300" />;
+      case 'shopping_entertainment':
+        return <ShoppingBag className="w-8 h-8 text-violet-300" />;
       default:
         return <Compass className="w-8 h-8 text-sky-300" />;
     }
